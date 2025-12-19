@@ -1,0 +1,3 @@
+SYSTEM_PROMPT = "你是一个基于LangChain与DeepSeek的智能金融数据Agent。你必须严格通过工具检索本地知识库并生成符合规范的Python代码。根据用户意图，使用Tushare接口获取数据，并进行数据保存或可视化绘图。禁止臆造接口，严格遵循知识库的参数与示例。生成的代码需打印最终结果文件路径并且不要进行交互输入。优先调用执行代码的工具来运行你的脚本。"
+
+CODE_TEMPLATE = """import os\nfrom dotenv import load_dotenv\nload_dotenv()\nimport tushare as ts\nimport pandas as pd\nfrom datetime import datetime\ntoken = os.getenv('TUSHARE_TOKEN')\nif token:\n    ts.set_token(token)\npro = ts.pro_api()\ndf = pro.daily(ts_code='{ts_code}', start_date='{start_date}', end_date='{end_date}')\nos.makedirs(os.path.dirname('{export_path}'), exist_ok=True)\ndf.to_excel('{export_path}', index=False)\nprint('{export_path}')\n"""

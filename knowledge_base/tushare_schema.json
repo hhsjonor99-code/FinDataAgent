@@ -1,0 +1,13 @@
+[
+  {
+    "function_name": "tushare.daily",
+    "description": "获取股票日线行情",
+    "parameters": {
+      "ts_code": "股票代码，如 000001.SZ",
+      "start_date": "开始日期YYYYMMDD",
+      "end_date": "结束日期YYYYMMDD"
+    },
+    "required_imports": ["import tushare as ts"],
+    "example": "pro = ts.pro_api(); df = pro.daily(ts_code='000001.SZ', start_date='20180701', end_date='20180718')"
+  }
+]

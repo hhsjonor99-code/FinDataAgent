@@ -1,0 +1,15 @@
+[
+  {
+    "function_name": "plot_line_chart",
+    "description": "使用DataFrame绘制折线图并保存",
+    "parameters": {
+      "df": "数据帧",
+      "x_col": "X轴列名",
+      "y_col": "Y轴列名",
+      "title": "图表标题",
+      "save_path": "保存路径png/jpg"
+    },
+    "required_imports": ["import matplotlib.pyplot as plt", "from tools.plot_utils import plot_line_chart"],
+    "example": "plot_line_chart(df, 'trade_date', 'close', '平安银行收盘价', 'workspace/exports/pingan_close.png')"
+  }
+]
