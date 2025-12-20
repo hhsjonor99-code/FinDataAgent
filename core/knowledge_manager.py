@@ -133,5 +133,3 @@ def parse_intent(intent: str) -> Dict[str, str | None]:
         if actions["plot"] is None:
             actions["plot"] = fa["plot"]
     return {"stock_name": stock_name, "ts_code": ts_code, "start_date": start_date, "end_date": end_date, "api": api, "params": params, "actions": actions}
-
-    
