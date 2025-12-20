@@ -13,6 +13,9 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.abspath(os.path.join(BASE_DIR, os.pardir))
 
 def _extract_code(text: str) -> str:
+    """
+    提取LLM的回复所生成的Python代码块
+    """
     m = re.search(r"```python\n([\s\S]*?)```", text)
     if m:
         return m.group(1)
@@ -20,6 +23,7 @@ def _extract_code(text: str) -> str:
     if m2:
         return m2.group(1)
     return text
+
 
 def agent_workflow(intent: str):
     """
@@ -30,9 +34,16 @@ def agent_workflow(intent: str):
     4. Execute & Observe
     5. Self-Correction Loop
     """
+
+    """
+    从配置文件（.env）中读取LLM的API密钥、基础URL和模型名称
+    基础URL与模型名称在配置中没有指定，使用默认值
+    """
     api_key = os.getenv("DEEPSEEK_API_KEY")
     base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
     model = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+    
+
     
     # Initialize Logger
     log_dir = os.path.join(ROOT_DIR, "core", "agent_log_record")

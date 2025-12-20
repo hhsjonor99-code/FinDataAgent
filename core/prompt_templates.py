@@ -6,6 +6,7 @@ Your goal is to satisfy the user's request by generating a SINGLE, COMPLETE Pyth
 - The system automatically injects a "Pre-amble" script before your code.
 - **Pre-loaded Libraries**: `pandas` (pd), `numpy` (np), `tushare` (ts), `matplotlib.pyplot` (plt), `os`, `sys`, `datetime`.
 - **Tushare Token**: Already initialized (`ts.set_token(...)` and `pro = ts.pro_api()`).
+- **CRITICAL**: DO NOT call `ts.set_token()` or `ts.pro_api()` again. Use the existing `pro` object directly.
 - **Plotting**: Matplotlib is configured with `Agg` backend (non-interactive). You must save figures to files.
 
 ### Knowledge Base

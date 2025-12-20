@@ -12,7 +12,7 @@ def load_knowledge_base() -> str:
     """
     paths = [
         os.path.join(ROOT_DIR, "knowledge_base/tushare_schema.json"),
-        os.path.join(ROOT_DIR, "knowledge_base/tool_docs.json")
+        #os.path.join(ROOT_DIR, "knowledge_base/tool_docs.json")
     ]
     
     knowledge_content = []
