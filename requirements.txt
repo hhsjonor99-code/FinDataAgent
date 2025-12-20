@@ -3,7 +3,4 @@ tushare
 pandas
 openpyxl
 matplotlib
-langchain
-langchain-openai
-langchain-community
 openai

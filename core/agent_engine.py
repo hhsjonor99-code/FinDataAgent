@@ -3,30 +3,14 @@ import json
 import re
 from pathlib import Path
 from datetime import datetime
-from langchain_openai import ChatOpenAI
-from .prompt_templates import SYSTEM_PROMPT, CODE_TEMPLATE
+from openai import OpenAI
+from .prompt_templates import CODE_INTERPRETER_SYSTEM_PROMPT
 from tools.code_executor import run_python_code
-from .knowledge_manager import parse_intent
+from .knowledge_manager import get_knowledge_context
 from log_tools.logger import get_logger
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.abspath(os.path.join(BASE_DIR, os.pardir))
-
-def _load_knowledge() -> str:
-    paths = [
-        os.path.join(ROOT_DIR, "knowledge_base/tushare_schema.json"),
-        os.path.join(ROOT_DIR, "knowledge_base/tool_docs.json")
-    ]
-    payload = {}
-    for p in paths:
-        if os.path.exists(p):
-            with open(p, "r", encoding="utf-8") as f:
-                try:
-                    payload[os.path.basename(p)] = json.load(f)
-                except Exception:
-                    payload[os.path.basename(p)] = f.read()
-    return json.dumps(payload, ensure_ascii=False)
-
 
 def _extract_code(text: str) -> str:
     m = re.search(r"```python\n([\s\S]*?)```", text)
@@ -37,88 +21,93 @@ def _extract_code(text: str) -> str:
         return m2.group(1)
     return text
 
-
 def agent_workflow(intent: str):
+    """
+    Main Agent Workflow:
+    1. Retrieve Knowledge
+    2. Construct Prompt
+    3. LLM Think & Code
+    4. Execute & Observe
+    5. Self-Correction Loop
+    """
     api_key = os.getenv("DEEPSEEK_API_KEY")
     base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
     model = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
-    info = parse_intent(intent)
-    ts_code = info.get("ts_code")
-    stock_name = info.get("stock_name")
-    start_date = info.get("start_date")
-    end_date = info.get("end_date")
-    api = info.get("api")
-    params = info.get("params") or {}
-    actions = info.get("actions") or {"export": True, "plot": False}
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    export_path = None
-    plot_path = None
-    label = ts_code or stock_name or "unknown"
-    safe_label = str(label).replace(".", "_").replace(" ", "")
-    if actions.get("export"):
-        export_path = f"workspace/exports/{safe_label}_{start_date}_{end_date}_{ts}.xlsx"
-    if actions.get("plot"):
-        plot_path = f"workspace/exports/{safe_label}_{start_date}_{end_date}_{ts}.png"
-    print_path = export_path or plot_path
-
+    
+    # Initialize Logger
     log_dir = os.path.join(ROOT_DIR, "core", "agent_log_record")
     os.makedirs(log_dir, exist_ok=True)
     logger = get_logger(log_dir, "agent")
-    try:
-        llm = ChatOpenAI(api_key=api_key, base_url=base_url, model=model, temperature=0)
-        knowledge = _load_knowledge()
-        user_prompt = (
-            f"意图：{intent}\n"
-            f"参数解析：ts_code={ts_code}, start_date={start_date}, end_date={end_date}\n"
-            f"接口：{api}\n"
-            f"参数：{json.dumps(params, ensure_ascii=False)}\n"
-            f"动作：export={actions.get('export')}, plot={actions.get('plot')}\n"
-            f"导出路径：{export_path or ''}\n"
-            f"图像路径：{plot_path or ''}\n"
-            f"打印路径（只能打印这一项）：{print_path or ''}\n"
-            f"知识库：{knowledge}\n"
-            "要求：\n"
-            "1. 必须使用以下代码初始化 token：\n"
-            "   import os\n"
-            "   import tushare as ts\n"
-            "   from dotenv import load_dotenv\n"
-            "   load_dotenv()\n"
-            "   token = os.getenv('TUSHARE_TOKEN')\n"
-            "   ts.set_token(token)\n"
-            "   pro = ts.pro_api()\n"
-            "2. 选择接口并调用：使用 getattr(pro, api)(**params) 或等价方式，接口名与参数必须来自知识库。\n"
-            "3. 若存在时间列，在保存或绘图前按时间升序排序；列名从知识库或返回数据中选择合适字段。\n"
-            "4. 当 export=true 且 plot=false：必须包含 df.to_excel(export_path) 并只保存 Excel；不要画图。\n"
-            "5. 当 export=false 且 plot=true：必须包含绘图保存到 plot_path；不要导出 Excel。\n"
-            "6. 当 export=true 且 plot=true：同时保存 Excel 与图像，各自到对应路径。\n"
-            "6. 禁止使用 print 输出除最终绝对路径外任何内容；最后一行必须仅包含路径字符串。\n"
-            "7. 生成的代码不包含交互输入；只输出代码，不要解释。"
-        )
-        msg = [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": user_prompt}]
-        logger.info(json.dumps({"intent": intent, "parsed": info, "paths": {"export": export_path, "plot": plot_path}}, ensure_ascii=False))
-        resp = llm.invoke(msg)
-        code = _extract_code(resp.content)
-        
-        ok, out = run_python_code(code, script_name="agent_exec.py")
-        logger.info(json.dumps({"executed": ok, "stdout": out}, ensure_ascii=False))
-        candidates = []
-        if export_path:
-            candidates.append(Path(ROOT_DIR, export_path).resolve())
-        if plot_path:
-            candidates.append(Path(ROOT_DIR, plot_path).resolve())
-        for p in candidates:
-            if p.exists():
-                logger.info(str(p))
-                return True, str(p)
-        last_line = (out or "").strip().splitlines()[-1] if out else ""
-        lp = Path(last_line) if last_line else None
-        if lp and (lp.is_absolute() and lp.exists()):
-            logger.info(str(lp))
-            return True, str(lp)
-        return False, out
-    except Exception as e:
+    
+    # 1. Retrieve Knowledge
+    knowledge = get_knowledge_context(intent)
+    
+    # 2. Construct System Prompt
+    system_prompt = CODE_INTERPRETER_SYSTEM_PROMPT.format(knowledge_base=knowledge)
+    
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": intent}
+    ]
+    
+    # Use OpenAI client directly as LangChain seems unstable in this env
+    client = OpenAI(api_key=api_key, base_url=base_url)
+    
+    max_retries = 3
+    
+    logger.info(f"Starting workflow for intent: {intent}")
+    
+    for attempt in range(max_retries):
         try:
-            logger.error(str(e))
-        except Exception:
-            pass
-        return False, f"Agent Execution Error: {str(e)}"
+            # 3. LLM Think & Code
+            logger.info(f"Invoking LLM (Attempt {attempt+1})...")
+            
+            response = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                stream=False,
+                temperature=0
+            )
+            
+            content = response.choices[0].message.content
+            logger.info(f"LLM Response (Attempt {attempt+1}): {content[:200]}...")
+            
+            code = _extract_code(content)
+            
+            # If no code block found, check if it's a refusal or conversational response
+            if "```" not in content and len(code) < 50:
+                # Assuming non-code response
+                logger.info("No code generated, returning content.")
+                return True, content
+            
+            # 4. Execute
+            logger.info("Executing code...")
+            ok, out = run_python_code(code, script_name=f"agent_exec_{attempt}.py")
+            logger.info(f"Execution Result: ok={ok}, out={out[:200]}...")
+            
+            if ok:
+                # Success!
+                # Check for output path
+                match = re.search(r"OUTPUT_PATH:(.*)", out)
+                if match:
+                    path = match.group(1).strip()
+                    return True, path
+                
+                # Check if we can find any file in exports matching a pattern if no explicit path?
+                # For now, rely on strict OUTPUT_PATH protocol or just return stdout
+                return True, out
+            else:
+                # Failure - Self Correction
+                error_msg = f"Execution Failed:\n{out}"
+                logger.warning(error_msg)
+                
+                messages.append({"role": "assistant", "content": content})
+                messages.append({"role": "user", "content": f"The code failed to execute. Error:\n{out}\nPlease analyze the error and rewrite the COMPLETE script to fix it."})
+                
+        except Exception as e:
+            logger.error(f"Workflow Exception: {e}")
+            import traceback
+            traceback.print_exc()
+            return False, str(e)
+            
+    return False, f"Failed to complete task after {max_retries} attempts."
