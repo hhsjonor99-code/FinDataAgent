@@ -10,7 +10,7 @@ load_dotenv()
 # 将项目根目录添加到sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from core.agent_engine import agent_workflow
+from core.agent_engine import agent_workflow_streaming
 
 st.title("FinDataAgent")
 
@@ -35,7 +35,7 @@ if st.button("开始分析"):
         thinking_placeholder = st.empty()
         
         try:
-            for output in agent_workflow(user_input):
+            for output in agent_workflow_streaming(user_input):
                 data = json.loads(output)
                 
                 if data['type'] == 'thought' or data['type'] == 'execution' or data['type'] == 'error':

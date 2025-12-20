@@ -65,20 +65,107 @@ def agent_workflow(intent: str):
     client = OpenAI(api_key=api_key, base_url=base_url)
     
     max_retries = 3
+    
+    logger.info(f"Starting workflow for intent: {intent}")
+    
+    for attempt in range(max_retries):
+        try:
+            # 3. LLM Think & Code
+            logger.info(f"Invoking LLM (Attempt {attempt+1})...")
+            
+            response = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                stream=False,
+                temperature=0
+            )
+            
+            content = response.choices[0].message.content
+            logger.info(f"LLM Response (Attempt {attempt+1}): {content[:200]}...")
+            
+            code = _extract_code(content)
+            
+            # If no code block found, check if it's a refusal or conversational response
+            if "```" not in content and len(code) < 50:
+                # Assuming non-code response
+                logger.info("No code generated, returning content.")
+                return True, content
+            
+            # 4. Execute
+            logger.info("Executing code...")
+            ok, out = run_python_code(code, script_name=f"agent_exec_{attempt}.py")
+            logger.info(f"Execution Result: ok={ok}, out={out[:200]}...")
+            
+            if ok:
+                # Success!
+                # Check for output path
+                match = re.search(r"OUTPUT_PATH:(.*)", out)
+                if match:
+                    path = match.group(1).strip()
+                    return True, path
+                
+                # Check if we can find any file in exports matching a pattern if no explicit path?
+                # For now, rely on strict OUTPUT_PATH protocol or just return stdout
+                return True, out
+            else:
+                # Failure - Self Correction
+                error_msg = f"Execution Failed:\n{out}"
+                logger.warning(error_msg)
+                
+                messages.append({"role": "assistant", "content": content})
+                messages.append({"role": "user", "content": f"The code failed to execute. Error:\n{out}\nPlease analyze the error and rewrite the COMPLETE script to fix it."})
+                
+        except Exception as e:
+            logger.error(f"Workflow Exception: {e}")
+            import traceback
+            traceback.print_exc()
+            return False, str(e)
+            
+    return False, f"Failed to complete task after {max_retries} attempts."
+
+
+def agent_workflow_streaming(intent: str):
+    """
+    Streaming Agent Workflow for UI:
+    1. Retrieve Knowledge
+    2. Construct Prompt
+    3. LLM Think & Code (Streaming)
+    4. Execute & Observe
+    5. Self-Correction Loop
+    """
+    api_key = os.getenv("DEEPSEEK_API_KEY")
+    base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
+    model = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+    
+    log_dir = os.path.join(ROOT_DIR, "core", "agent_log_record")
+    os.makedirs(log_dir, exist_ok=True)
+    logger = get_logger(log_dir, "agent")
+    
+    knowledge = get_knowledge_context(intent)
+    
+    system_prompt = CODE_INTERPRETER_SYSTEM_PROMPT.format(knowledge_base=knowledge)
+    
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": intent}
+    ]
+    
+    client = OpenAI(api_key=api_key, base_url=base_url)
+    
+    max_retries = 3
 
     logger.info(f"Starting workflow for intent: {intent}")
     yield json.dumps({"type": "thought", "content": "正在分析您的需求..."}) + "\n"
 
     for attempt in range(max_retries):
         try:
-            # 3. LLM Think & Code
             logger.info(f"Invoking LLM (Attempt {attempt + 1})...")
             yield json.dumps({"type": "thought", "content": f"第 {attempt + 1} 次尝试思考..."}) + "\n"
 
             response = client.chat.completions.create(
                 model=model,
                 messages=messages,
-                stream=True,  # Enable streaming
+                stream=True,
                 temperature=0
             )
 
@@ -99,7 +186,6 @@ def agent_workflow(intent: str):
                 yield json.dumps({"type": "result", "success": True, "data": content}) + "\n"
                 return
 
-            # 4. Execute
             logger.info("Executing code...")
             yield json.dumps({"type": "execution", "content": "正在执行生成的代码..."}) + "\n"
             ok, out = run_python_code(code, script_name=f"agent_exec_{attempt}.py")
