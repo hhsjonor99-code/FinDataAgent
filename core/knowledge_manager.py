@@ -59,17 +59,21 @@ def parse_intent(intent: str) -> Dict[str, str | None]:
     ts_code = None
     start_date = None
     end_date = None
+    api = None
+    params = None
     actions = {"export": None, "plot": None}
+    m_code = re.search(r"(\d{6})[._](SZ|SH)", intent, re.IGNORECASE)
+    if m_code:
+        ts_code = f"{m_code.group(1)}.{m_code.group(2).upper()}"
     if api_key:
         try:
             llm = ChatOpenAI(api_key=api_key, base_url=base_url, model=model, temperature=0)
             sys = (
-                "你是中文意图解析器，输出严格JSON。字段：stock_name, ts_code, start_date, end_date, want_export, want_plot。\n"
-                "规则：日期格式YYYYMMDD；含有‘导出/保存/获取/查询/拉取/数据/Excel/CSV/写入/输出’均视为导出；含有‘画图/折线图/图表/plot’视为绘图；含有‘不导出’则want_export=false；含有‘不画图’则want_plot=false；‘只画图’则绘图true导出false；‘只导出’则导出true绘图false；未明确时默认导出true、绘图false。仅输出JSON，不要解释。\n"
-                "示例1：导出贵州茅台2023年1月到2月的日线到Excel，不要画图 → {\"stock_name\":\"贵州茅台\",\"ts_code\":null,\"start_date\":\"20230101\",\"end_date\":\"20230201\",\"want_export\":true,\"want_plot\":false}\n"
-                "示例2：绘制海康威视2023年3月至4月的收盘价折线图，不导出Excel → {\"stock_name\":\"海康威视\",\"ts_code\":null,\"start_date\":\"20230301\",\"end_date\":\"20230401\",\"want_export\":false,\"want_plot\":true}\n"
-                "示例3：获取平安银行2023年1月到3月的日线并画图 → {\"stock_name\":\"平安银行\",\"ts_code\":null,\"start_date\":\"20230101\",\"end_date\":\"20230301\",\"want_export\":true,\"want_plot\":true}\n"
-                "示例4：获取数据：600519.SH在2023年1月到1月的日线 → {\"stock_name\":null,\"ts_code\":\"600519.SH\",\"start_date\":\"20230101\",\"end_date\":\"20230131\",\"want_export\":true,\"want_plot\":false}"
+                "你是中文意图解析器，输出严格JSON。字段：stock_name, ts_code, start_date, end_date, api, params, want_export, want_plot。\n"
+                "规则：日期格式YYYYMMDD；接口名为知识库中的Tushare接口，如 daily/shibor/gdp 等；params 为调用参数字典。含有‘导出/保存/获取/查询/拉取/数据/Excel/CSV/写入/输出’视为导出；含有‘画图/折线图/图表/plot’视为绘图；含有‘不导出’则want_export=false；含有‘不画图’则want_plot=false；‘只画图’则绘图true导出false；‘只导出’则导出true绘图false；未明确时默认导出true、绘图false。仅输出JSON，不要解释。\n"
+                "示例1：导出贵州茅台2023年1月到2月的日线到Excel，不要画图 → {\"stock_name\":\"贵州茅台\",\"ts_code\":null,\"start_date\":\"20230101\",\"end_date\":\"20230201\",\"api\":\"daily\",\"params\":{\"ts_code\":\"600519.SH\",\"start_date\":\"20230101\",\"end_date\":\"20230201\"},\"want_export\":true,\"want_plot\":false}\n"
+                "示例2：绘制海康威视2023年3月至4月的收盘价折线图，不导出Excel → {\"stock_name\":\"海康威视\",\"ts_code\":null,\"start_date\":\"20230301\",\"end_date\":\"20230401\",\"api\":\"daily\",\"params\":{\"ts_code\":\"002415.SZ\",\"start_date\":\"20230301\",\"end_date\":\"20230401\"},\"want_export\":false,\"want_plot\":true}\n"
+                "示例3：获取SHIBOR隔夜在区间并导出 → {\"stock_name\":null,\"ts_code\":null,\"start_date\":\"20230101\",\"end_date\":\"20230601\",\"api\":\"shibor\",\"params\":{\"start_date\":\"20230101\",\"end_date\":\"20230601\",\"item\":\"ON\"},\"want_export\":true,\"want_plot\":false}"
             )
             msg = [{"role": "system", "content": sys}, {"role": "user", "content": intent}]
             resp = llm.invoke(msg)
@@ -91,6 +95,8 @@ def parse_intent(intent: str) -> Dict[str, str | None]:
                         ts_code = ts_code.replace("_", ".")
                     start_date = data.get("start_date")
                     end_date = data.get("end_date")
+                    api = data.get("api")
+                    params = data.get("params")
                     want_export = data.get("want_export")
                     want_plot = data.get("want_plot")
                     if isinstance(want_export, bool):
@@ -110,41 +116,22 @@ def parse_intent(intent: str) -> Dict[str, str | None]:
             ts_code = find_ts_code_by_name(stock_name)
         except Exception:
             pass
+    if not api:
+        api = "daily"
+    if not params:
+        params = {}
+    if ts_code and "ts_code" not in params:
+        params["ts_code"] = ts_code
+    if start_date and "start_date" not in params:
+        params["start_date"] = start_date
+    if end_date and "end_date" not in params:
+        params["end_date"] = end_date
     if actions["export"] is None or actions["plot"] is None:
         fa = _detect_actions(intent)
         if actions["export"] is None:
             actions["export"] = fa["export"]
         if actions["plot"] is None:
             actions["plot"] = fa["plot"]
-    return {"stock_name": stock_name, "ts_code": ts_code, "start_date": start_date, "end_date": end_date, "actions": actions}
+    return {"stock_name": stock_name, "ts_code": ts_code, "start_date": start_date, "end_date": end_date, "api": api, "params": params, "actions": actions}
 
-def build_script(ts_code: str, start_date: str, end_date: str, export_path: str | None = None, plot_path: str | None = None, actions: Dict[str, bool] | None = None) -> str:
-    actions = actions or {"export": True, "plot": False}
-    print_path = export_path or plot_path or ""
-    code = f"""
-import os
-from dotenv import load_dotenv
-load_dotenv()
-import tushare as ts
-import pandas as pd
-from tools.plot_utils import plot_line_chart
-token = os.getenv('TUSHARE_TOKEN')
-if token:
-    ts.set_token(token)
-pro = ts.pro_api()
-df = pro.daily(ts_code='{ts_code}', start_date='{start_date}', end_date='{end_date}')
-df = df.sort_values('trade_date')
-if {str(bool(actions.get('export')))}:
-    if '{export_path}':
-        os.makedirs(os.path.dirname('{export_path}'), exist_ok=True)
-        df.to_excel('{export_path}', index=False)
-if {str(bool(actions.get('plot')))}:
-    if '{plot_path}':
-        os.makedirs(os.path.dirname('{plot_path}'), exist_ok=True)
-        plot_line_chart(df, 'trade_date', 'close', '{ts_code}收盘价折线图', '{plot_path}')
-print(os.path.abspath('{print_path}'))
-"""
-    return code
-    m_code = re.search(r"(\d{6})[._](SZ|SH)", intent, re.IGNORECASE)
-    if m_code:
-        ts_code = f"{m_code.group(1)}.{m_code.group(2).upper()}"
+    

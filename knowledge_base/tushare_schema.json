@@ -8,6 +8,24 @@
       "end_date": "结束日期YYYYMMDD"
     },
     "required_imports": ["import tushare as ts"],
-    "example": "pro = ts.pro_api(); df = pro.daily(ts_code='000001.SZ', start_date='20180701', end_date='20180718')"
+    "example": "pro = ts.pro_api(); df = pro.daily(ts_code='000001.SZ', start_date='20180701', end_date='20180718')",
+    "time_field": "trade_date",
+    "default_visual": {"x_col": "trade_date", "y_col": "close"}
+
+    
+  },
+
+  {
+    "function_name": "tushare.cn_gdp",
+    "description": "获取中国GDP季度数据",
+    "parameters": {
+      "start_q": "开始季度，如 2018Q1",
+      "end_q": "结束季度，如 2019Q3",
+      "fields": "可选字段列表，用逗号分隔，如 'quarter,gdp,gdp_yoy'"
+    },
+    "required_imports": ["import tushare as ts"],
+    "example": "pro = ts.pro_api(); df = pro.cn_gdp(start_q='2018Q1', end_q='2019Q3'); df2 = pro.cn_gdp(start_q='2018Q1', end_q='2019Q3', fields='quarter,gdp,gdp_yoy')",
+    "time_field": "quarter",
+    "default_visual": {"x_col": "quarter", "y_col": "gdp"}
   }
 ]

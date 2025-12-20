@@ -22,9 +22,7 @@ def main():
          print(f"Success: {out}")
     else:
         print(f"Failed: {out}")
-    """
-
-    """
+  
     print(">>> Test 1: 获取数据 (Excel)")
     intent = "我希望获取2023年1月1日至2023年1月31日的贵州茅台的股票收盘价数据"
     ok, out = agent_workflow(intent)
@@ -39,16 +37,19 @@ def main():
     if ok2:
         print(f"Success: {out2}")
     else:
-        print(f"Failed: {out2}")
+        print(f"Failed: {out}")
+
+    """
 
     print("\n>>> Test 3: 仅画图(不导出)")
-    intent3 = "绘制海康威视2023年03月01日至2023年04月01日的收盘价折线图"
+    intent3 = "绘制海康威视2023年03月01日至2023年04月01日的收盘价折线图，不导出Excel"
     ok3, out3 = agent_workflow(intent3)
     if ok3:
         print(f"Success: {out3}")
     else:
         print(f"Failed: {out3}")
 
+    """
     print("\n>>> Test 4: 同时导出与画图")
     intent4 = "获取平安银行2023年01月01日至2023年03月01日的日线并导出Excel，同时画折线图"
     ok4, out4 = agent_workflow(intent4)
@@ -57,6 +58,7 @@ def main():
     else:
         print(f"Failed: {out4}")
 
+
     print("\n>>> Test 5: 模糊名称默认导出")
     intent5 = "获取茅台2023年01月01日至2023年01月31日的日线"
     ok5, out5 = agent_workflow(intent5)
@@ -64,7 +66,7 @@ def main():
         print(f"Success: {out5}")
     else:
         print(f"Failed: {out5}")
-    """
+
     print("\n>>> Test 6: 仅描述获取数据")
     intent6 = "获取数据：平安银行2023年01月01日至2023年01月31日的日线"
     ok6, out6 = agent_workflow(intent6)
@@ -72,6 +74,26 @@ def main():
         print(f"Success: {out6}")
     else:
         print(f"Failed: {out6}")
+
+ 
+    
+
+    print("\n>>> Test 7: GDP 季度数据导出")
+    intent7 = "获取中国GDP季度数据从2018Q1到2019Q3，并导出Excel，不要画图"
+    ok7, out7 = agent_workflow(intent7)
+    if ok7:
+        print(f"Success: {out7}")
+    else:
+        print(f"Failed: {out7}")
+
+    print("\n>>> Test 8: GDP 指定字段导出")
+    intent8 = "获取中国GDP季度数据从2018Q1到2019Q3，只选择quarter,gdp,gdp_yoy字段，并导出Excel，不要画图"
+    ok8, out8 = agent_workflow(intent8)
+    if ok8:
+        print(f"Success: {out8}")
+    else:
+        print(f"Failed: {out8}")
+    """
 
 if __name__ == "__main__":
     main()
