@@ -7,7 +7,7 @@
 自然语言交互：无需编写代码，通过对话即可完成数据抓取。
 自动代码生成：Agent 根据需求检索 API 文档并生成 Python 执行脚本。
 本地知识库：内置 Tushare API Schema，确保接口调用的准确性。
-可视化输出：自动生成 Excel 报表与 Matplotlib 折线图。
+可视化输出：自动生成 Excel 报表与 Matplotlib 图表。
 
 ## 技术栈：
 LLM: DeepSeek-V3 (OpenAI 兼容接口)
