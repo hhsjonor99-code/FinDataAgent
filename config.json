@@ -1,5 +1,6 @@
 {
-    "theme": "Lavender Dream",
+    "theme": "Warm Peach",
     "user_avatar": "🚀",
-    "agent_avatar": "🦉"
+    "agent_avatar": "🦉",
+    "llm_model": "deepseek-chat"
 }

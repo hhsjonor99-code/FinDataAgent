@@ -42,6 +42,14 @@ def agent_workflow(intent: str):
     api_key = os.getenv("DEEPSEEK_API_KEY")
     base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
     model = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+    try:
+        with open(os.path.join(ROOT_DIR, "config.json"), "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+            m = cfg.get("llm_model")
+            if m:
+                model = m
+    except Exception:
+        pass
     
 
     
@@ -136,6 +144,14 @@ def agent_workflow_streaming(intent: str):
     api_key = os.getenv("DEEPSEEK_API_KEY")
     base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
     model = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+    try:
+        with open(os.path.join(ROOT_DIR, "config.json"), "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+            m = cfg.get("llm_model")
+            if m:
+                model = m
+    except Exception:
+        pass
     
     log_dir = os.path.join(ROOT_DIR, "core", "agent_log_record")
     os.makedirs(log_dir, exist_ok=True)
@@ -187,7 +203,7 @@ def agent_workflow_streaming(intent: str):
                 return
 
             logger.info("Executing code...")
-            yield json.dumps({"type": "execution", "content": "正在执行生成的代码..."}) + "\n"
+            yield json.dumps({"type": "execution", "content": code}) + "\n"
             ok, out = run_python_code(code, script_name=f"agent_exec_{attempt}.py")
             logger.info(f"Execution Result: ok={ok}, out={out[:200]}...")
 

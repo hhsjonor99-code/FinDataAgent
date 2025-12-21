@@ -6,7 +6,8 @@ CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.pa
 DEFAULT_CONFIG = {
     "theme": "Warm Peach",
     "user_avatar": "👤",
-    "agent_avatar": "🤖"
+    "agent_avatar": "🤖",
+    "llm_model": "deepseek-chat"
 }
 
 def load_config():
@@ -56,4 +57,13 @@ def set_user_avatar(avatar):
 def set_agent_avatar(avatar):
     config = load_config()
     config["agent_avatar"] = avatar
+    save_config(config)
+
+def get_llm_model():
+    config = load_config()
+    return config.get("llm_model", "deepseek-chat")
+
+def set_llm_model(model_name):
+    config = load_config()
+    config["llm_model"] = model_name
     save_config(config)

@@ -12,7 +12,7 @@ from styles.theme import apply_theme
 from state import store
 from components.topbar import render as render_topbar
 from components.chat import render as render_chat
-from services.config_manager import set_theme, get_theme, set_user_avatar, set_agent_avatar, get_avatars
+from services.config_manager import set_theme, get_theme, set_user_avatar, set_agent_avatar, get_avatars, get_llm_model, set_llm_model
 from styles.theme import THEMES
 
 def open_folder(path):
@@ -117,6 +117,26 @@ def render_sidebar():
             if selected_agent != avatars["agent"]:
                 set_agent_avatar(selected_agent)
                 st.toast("智能体图标已更新", icon="🤖")
+                st.rerun()
+
+            st.divider()
+            
+            st.caption("模型配置")
+            models = ["deepseek-chat", "deepseek-reasoner"]
+            current_model = get_llm_model()
+            try:
+                model_index = models.index(current_model)
+            except ValueError:
+                model_index = 0
+            selected_model = st.selectbox(
+                "LLM模型",
+                models,
+                index=model_index,
+                key="llm_model_selector"
+            )
+            if selected_model != current_model:
+                set_llm_model(selected_model)
+                st.toast("LLM模型已更新", icon="🧠")
                 st.rerun()
         
         if store.is_running():

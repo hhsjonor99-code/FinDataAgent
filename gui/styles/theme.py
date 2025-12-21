@@ -188,13 +188,10 @@ def get_css(theme_name):
         background: transparent !important;
     }}
     .stChatInput {{
-        position: fixed;
-        bottom: 80px;
-        left: 50%;
-        transform: translateX(-50%);
+        position: static !important;
         width: 100%;
         max-width: 800px;
-        z-index: 1000;
+        margin: 0 auto;
         padding: 0 1rem;
     }}
     [data-testid="stChatInput"] {{
@@ -212,6 +209,24 @@ def get_css(theme_name):
         border: none !important;
         outline: none !important;
         box-shadow: none !important;
+    }}
+    [data-testid="stChatInput"]:focus,
+    [data-testid="stChatInput"]:focus-within,
+    [data-testid="stChatInput"] textarea:focus,
+    [data-testid="stChatInput"] input:focus,
+    [data-testid="stChatInput"] textarea:focus-visible,
+    [data-testid="stChatInput"] input:focus-visible {{
+        border: none !important;
+        outline: none !important;
+        box-shadow: none !important;
+        border-color: transparent !important;
+    }}
+    [data-testid="stChatInput"] *:focus,
+    [data-testid="stChatInput"] *:focus-visible,
+    [data-testid="stChatInput"] *:focus-within {{
+        outline: none !important;
+        box-shadow: none !important;
+        border-color: transparent !important;
     }}
     [data-testid="stChatInput"] button {{
         background: transparent !important;
@@ -236,9 +251,7 @@ def get_css(theme_name):
             padding-left: 1rem !important;
             padding-right: 1rem !important;
         }}
-        .stChatInput {{
-            bottom: 10px;
-        }}
+        .stChatInput {{ transform: translateY(-15vh); }}
     }}
 </style>
 """

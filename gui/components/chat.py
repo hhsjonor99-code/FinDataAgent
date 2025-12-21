@@ -132,43 +132,53 @@ def process_response(prompt: str):
                     content = data.get('content', '')
                     result_data = data.get('data', '')
                     ev = adapt_event(data)
-                    store.append_event(ev)
                     
                     # 更新日志
                     logs = read_formatted_logs()
                     if logs:
                         log_placeholder.code(logs, language="text")
 
-                    if msg_type == 'thought':
-                        thought_placeholder.markdown(f"### :material/psychology: 思考中...\n{content}")
-                        status_container.update(label=f":material/sync: {ev.get('stage', '处理中')} ({int(ev.get('progress',0)*100)}%)")
-                        
-                    elif msg_type == 'thought_stream':
-                        # 如果需要流式更新思考内容，可以在这里处理
-                        pass
-                        
-                    elif msg_type == 'execution':
-                        thought_placeholder.markdown(f"### :material/terminal: 执行代码\n正在执行 Python 代码...")
-                        code_placeholder.code(content, language="python")
-                        status_container.update(label=f":material/terminal: 执行代码 ({int(ev.get('progress',0)*100)}%)")
-                        
-                    elif msg_type == 'error':
-                        thought_placeholder.markdown(f"### :material/error: 发生错误\n{content}")
-                        status_container.update(label=":material/error: 出错了", state="error")
-                        
-                    elif msg_type == 'result':
-                        if data.get('success'):
-                            full_response = result_data
-                            status_container.update(label=":material/check_circle: 分析完成", state="complete", expanded=False)
-                            # 任务完成后，保留最后的日志在 status 中
-                            thought_placeholder.empty()
-                            code_placeholder.empty()
-                            # 最终结果显示在 status 外部，或者在 status 内部最后更新
-                            status_container.write(full_response)
+                    if msg_type == 'thought_stream':
+                        # 流式更新思考内容
+                        events = store.get_events()
+                        if events and events[-1]['type'] == 'thought':
+                            events[-1]['content'] += content
+                            thought_placeholder.markdown(f"### :material/psychology: 思考中...\n{events[-1]['content']}")
                         else:
-                            full_response = f"⚠️ 任务失败: {result_data}"
-                            status_container.update(label=":material/cancel: 任务中止", state="error")
-                            status_container.write(full_response)
+                            # 异常情况处理：如果流式内容前没有 thought 事件
+                            ev['type'] = 'thought'
+                            store.append_event(ev)
+                            thought_placeholder.markdown(f"### :material/psychology: 思考中...\n{content}")
+                            
+                    else:
+                        store.append_event(ev)
+
+                        if msg_type == 'thought':
+                            thought_placeholder.markdown(f"### :material/psychology: 思考中...\n{content}")
+                            status_container.update(label=f":material/sync: {ev.get('stage', '处理中')}")
+                            
+                        elif msg_type == 'execution':
+                            thought_placeholder.markdown(f"### :material/terminal: 执行代码\n正在执行 Python 代码...")
+                            code_placeholder.code(content, language="python")
+                            status_container.update(label=f":material/terminal: 执行代码 ({int(ev.get('progress',0)*100)}%)")
+                        
+                        elif msg_type == 'error':
+                            thought_placeholder.markdown(f"### :material/error: 发生错误\n{content}")
+                            status_container.update(label=":material/error: 出错了", state="error")
+                            
+                        elif msg_type == 'result':
+                            if data.get('success'):
+                                full_response = result_data
+                                status_container.update(label=":material/check_circle: 分析完成", state="complete", expanded=False)
+                                # 任务完成后，保留最后的日志在 status 中
+                                thought_placeholder.empty()
+                                code_placeholder.empty()
+                                # 最终结果显示在 status 外部，或者在 status 内部最后更新
+                                status_container.write(full_response)
+                            else:
+                                full_response = f"⚠️ 任务失败: {result_data}"
+                                status_container.update(label=":material/cancel: 任务中止", state="error")
+                                status_container.write(full_response)
                             
                 except json.JSONDecodeError:
                     continue
