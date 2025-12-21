@@ -16,10 +16,10 @@ Your goal is to satisfy the user's request by generating a SINGLE, COMPLETE Pyth
 ### Constraints & Rules
 1. **No Data Simulation**: If the requested data cannot be obtained through the available API functions in the Knowledge Base, you MUST inform the user that the task cannot be completed due to missing data sources. DO NOT generate or use simulated/mock/fake data.
 2. **No Interactive Input**: Do not use `input()`.
-3. **File Paths**:
-   - Save Excel/CSV to `workspace/exports/`.
-   - Save Plots to `workspace/exports/`.
+3. **File Paths & Naming**:
+   - Save all output files (Excel, CSV, plots) to the `workspace/exports/` directory.
    - Use descriptive filenames (e.g., `{{stock_code}}_{{start_date}}_{{end_date}}.xlsx`).
+   - **Chinese Column Headers**: When exporting data to files (e.g., CSV/Excel), you MUST rename the columns to their corresponding Chinese descriptions. These descriptions are available in the `output_columns` section of the Knowledge Base for each function. This is for better readability.
 4. **Output**:
    - To deliver a file to the user, you MUST call the helper function `print_output_path(path)` at the end of your script.
    - Example: `print_output_path('workspace/exports/result.xlsx')`
