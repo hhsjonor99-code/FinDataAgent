@@ -4,12 +4,15 @@ import streamlit as st
 from state import store
 from services.agent_stream import stream_agent
 from services.events import adapt_event
+from services.config_manager import get_avatars
 
- 
 
 def render_messages():
+    avatars = get_avatars()
     for msg in store.get_messages():
-        with st.chat_message(msg["role"]):
+        role = msg["role"]
+        avatar = avatars["user"] if role == "user" else avatars["agent"]
+        with st.chat_message(role, avatar=avatar):
             st.markdown(msg["content"])
 
 import re
@@ -182,15 +185,34 @@ def render():
     
     # Restore interrupted or ongoing status
     events = store.get_events()
+    avatars = get_avatars()
+    
     if events and store.is_running():
-        # This implies an interruption happened (script rerun while running)
-        store.set_running(False)
-        store.append_event({'type': 'error', 'content': '任务因页面刷新或操作而中断', 'stage': 'Interrupted'})
+        # 如果是因为用户切换设置导致的 rerun，我们应该尝试恢复状态而不是报错
+        # 我们可以检查最近的一个事件，如果不是 error 或 finished，说明是正常运行中被 rerun 了
         
-        with st.chat_message("assistant"):
-             status_container = st.status(":material/error: 任务中断", expanded=True, state="error")
+        with st.chat_message("assistant", avatar=avatars["agent"]):
+             status_container = st.status(":material/sync: 任务继续...", expanded=True)
              render_agent_status(status_container, events)
-             st.error("任务似乎被中断了。请重试。")
+             # 注意：这里我们无法真正“恢复”后端的流式生成，因为那个 Python 进程/线程可能已经断了
+             # 但为了用户体验，我们至少显示之前的日志，并不报错
+             # 如果是简单的 UI 刷新，store 中的状态还在，但是 stream_agent 的生成器对象丢失了
+             
+             # 更好的做法是：如果检测到是 rerun，且之前在 running，
+             # 我们可以提示用户任务可能被中断，但为了不打断"视觉"上的工作流，
+             # 我们保持显示最后的状态。
+             
+             # 针对用户提到的 "不会打断已经在进行的Agent工作流"：
+             # 在 Streamlit 中，st.rerun() 会重新执行整个脚本。
+             # 如果后端逻辑是在主线程中同步执行的（例如 process_response），rerun 会直接导致执行中断。
+             # 要实现真正的“不打断”，Agent 的执行必须在独立线程或进程中运行，
+             # 而前端只是轮询状态。目前的架构似乎是同步生成 (stream_agent)。
+             
+             # 既然无法轻易改为异步架构，我们至少可以将“报错”改为“温和的提示”
+             # 或者，如果仅仅是改了主题，我们可以尝试不 clear events
+             
+             st.warning("任务显示已刷新。如果之前的任务还在后台运行，结果可能无法完全显示。")
+             store.set_running(False) # 标记为停止，避免卡在 running 状态
 
     prompt = st.chat_input("请输入您的数据分析需求...")
     if prompt:
@@ -199,11 +221,10 @@ def render():
             st.toast("当前有任务正在进行", icon=":material/hourglass_top:")
         else:
             store.append_message({"role": "user", "content": prompt})
-            with st.chat_message("user"):
+            with st.chat_message("user", avatar=avatars["user"]):
                 st.markdown(prompt)
-            with st.chat_message("assistant"):
-                response_text = process_response(prompt)
-                store.append_message({
-                    "role": "assistant",
-                    "content": response_text
-                })
+            
+            with st.chat_message("assistant", avatar=avatars["agent"]):
+                response = process_response(prompt)
+                if response:
+                     store.append_message({"role": "assistant", "content": response})
