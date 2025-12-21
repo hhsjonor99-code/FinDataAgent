@@ -1,65 +1,62 @@
 import streamlit as st
 import sys
 import os
-import json
+import platform
+import subprocess
 from dotenv import load_dotenv
 
-# Load env vars first
-load_dotenv()
-
-# 将项目根目录添加到sys.path
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from core.agent_engine import agent_workflow_streaming
+from styles.theme import apply_theme
+from state import store
+from components.topbar import render as render_topbar
+from components.chat import render as render_chat
+ 
 
-st.title("FinDataAgent")
+def open_folder(path):
+    try:
+        if platform.system() == "Windows":
+            os.startfile(path)
+        elif platform.system() == "Darwin":
+            subprocess.Popen(["open", path])
+        else:
+            subprocess.Popen(["xdg-open", path])
+    except Exception as e:
+        st.error(f"无法打开文件夹: {e}")
 
-# 初始化session_state
-if 'thinking_process' not in st.session_state:
-    st.session_state.thinking_process = ""
-if 'final_result' not in st.session_state:
-    st.session_state.final_result = ""
-if 'error_message' not in st.session_state:
-    st.session_state.error_message = ""
-
-# 需求输入框
-user_input = st.text_area("请输入您的数据分析需求：", height=150)
-
-if st.button("开始分析"):
-    if user_input:
-        st.session_state.thinking_process = ""
-        st.session_state.final_result = ""
-        st.session_state.error_message = ""
-
-        # AI思考展示框
-        thinking_placeholder = st.empty()
+def render_sidebar():
+    with st.sidebar:
+        st.markdown("# :material/analytics: FinData Agent")
+        st.caption("v1.1 | 数据获取与可视化分析助手")
+        if st.button("设置", width='stretch', icon=":material/settings:"):
+            st.toast("设置功能开发中", icon=":material/build:")
         
-        try:
-            for output in agent_workflow_streaming(user_input):
-                data = json.loads(output)
+        st.markdown("### :material/work: 工作区")
+        workspace_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'workspace', 'exports'))
+        
+        if st.button("打开输出文件夹", width='stretch', icon=":material/folder_open:"):
+            if os.path.exists(workspace_path):
+                open_folder(workspace_path)
+                st.toast("文件夹已打开", icon=":material/check_circle:")
+            else:
+                st.warning("文件夹尚未创建")
                 
-                if data['type'] == 'thought' or data['type'] == 'execution' or data['type'] == 'error':
-                    st.session_state.thinking_process += f"> {data['content']}\n\n"
-                elif data['type'] == 'thought_stream':
-                    st.session_state.thinking_process += data['content']
-                
-                thinking_placeholder.markdown(f"**AI 思考中...**\n```\n{st.session_state.thinking_process}\n```")
+        st.divider()
+        st.info("示例: 获取贵州茅台近365日收盘价, 绘制折线图, 并将CSV导出到 workspace/exports", icon=":material/lightbulb:")
+        
+        if store.is_running():
+            if st.button("停止运行", type="secondary", width='stretch', icon=":material/stop_circle:"):
+                store.request_stop()
+                st.toast("已请求停止", icon=":material/stop_circle:")
 
-                if data['type'] == 'result':
-                    if data['success']:
-                        st.session_state.final_result = data['data']
-                    else:
-                        st.session_state.error_message = data['data']
+def main():
+    load_dotenv()
+    apply_theme()
+    store.init()
+    render_topbar()
+    render_sidebar()
+    render_chat()
 
-        except Exception as e:
-            st.session_state.error_message = f"An unexpected error occurred: {str(e)}"
-
-    else:
-        st.warning("请输入您的需求。")
-
-# AI提示框
-if st.session_state.final_result:
-    st.success(st.session_state.final_result)
-
-if st.session_state.error_message:
-    st.error(f"分析失败: {st.session_state.error_message}")
+if __name__ == "__main__":
+    main()
