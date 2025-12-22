@@ -61,6 +61,66 @@ THEMES = {
         "input-bg": "rgba(250, 240, 255, 0.92)",
         "sidebar-bg": "rgba(245, 235, 255, 0.05)",
         "sidebar-accent": "rgba(155, 89, 182, 0.08)"
+    },
+    "Northern Lights": {
+        "primary-color": "#00B4D8",
+        "accent-color": "#7209B7",
+        "bg-gradient-start": "#e0f7fa",
+        "bg-gradient-mid": "#e1bee7",
+        "bg-gradient-end": "#f3e5f5",
+        "overlay-start": "rgba(0, 180, 216, 0.25)",
+        "overlay-end": "rgba(114, 9, 183, 0.25)",
+        "glass-bg": "rgba(250, 253, 255, 0.85)",
+        "glass-border": "1px solid rgba(0, 180, 216, 0.2)",
+        "card-shadow": "0 8px 32px rgba(0, 180, 216, 0.1)",
+        "input-bg": "rgba(245, 250, 255, 0.9)",
+        "sidebar-bg": "rgba(225, 245, 254, 0.1)",
+        "sidebar-accent": "rgba(0, 180, 216, 0.1)"
+    },
+    "Cosmic Fusion": {
+        "primary-color": "#6C63FF",
+        "accent-color": "#FF6584",
+        "bg-gradient-start": "#E0C3FC",
+        "bg-gradient-mid": "#C2E9FB",
+        "bg-gradient-end": "#F3E5F5",
+        "overlay-start": "rgba(108, 99, 255, 0.2)",
+        "overlay-end": "rgba(255, 101, 132, 0.2)",
+        "glass-bg": "rgba(255, 255, 255, 0.85)",
+        "glass-border": "1px solid rgba(108, 99, 255, 0.2)",
+        "card-shadow": "0 8px 32px rgba(108, 99, 255, 0.1)",
+        "input-bg": "rgba(255, 255, 255, 0.9)",
+        "sidebar-bg": "rgba(240, 245, 255, 0.2)",
+        "sidebar-accent": "rgba(108, 99, 255, 0.1)"
+    },
+    "Sunset Horizon": {
+        "primary-color": "#FF6B6B",
+        "accent-color": "#FFD93D",
+        "bg-gradient-start": "#fff1eb",
+        "bg-gradient-mid": "#ffd1ff",
+        "bg-gradient-end": "#fad0c4",
+        "overlay-start": "rgba(255, 107, 107, 0.2)",
+        "overlay-end": "rgba(255, 217, 61, 0.2)",
+        "glass-bg": "rgba(255, 255, 255, 0.9)",
+        "glass-border": "1px solid rgba(255, 107, 107, 0.2)",
+        "card-shadow": "0 8px 32px rgba(255, 107, 107, 0.1)",
+        "input-bg": "rgba(255, 250, 250, 0.9)",
+        "sidebar-bg": "rgba(255, 240, 240, 0.2)",
+        "sidebar-accent": "rgba(255, 107, 107, 0.1)"
+    },
+    "Emerald City": {
+        "primary-color": "#00b09b",
+        "accent-color": "#96c93d",
+        "bg-gradient-start": "#e6f7f5",
+        "bg-gradient-mid": "#f0fff4",
+        "bg-gradient-end": "#e0f2f1",
+        "overlay-start": "rgba(0, 176, 155, 0.2)",
+        "overlay-end": "rgba(150, 201, 61, 0.2)",
+        "glass-bg": "rgba(250, 255, 252, 0.9)",
+        "glass-border": "1px solid rgba(0, 176, 155, 0.2)",
+        "card-shadow": "0 8px 32px rgba(0, 176, 155, 0.1)",
+        "input-bg": "rgba(245, 255, 250, 0.9)",
+        "sidebar-bg": "rgba(235, 255, 245, 0.2)",
+        "sidebar-accent": "rgba(0, 176, 155, 0.1)"
     }
 }
 
@@ -74,6 +134,7 @@ def get_css(theme_name):
         --accent-color: {theme["accent-color"]};
         --bg-gradient-start: {theme["bg-gradient-start"]};
         --bg-gradient-end: {theme["bg-gradient-end"]};
+        {f"--bg-gradient-mid: {theme['bg-gradient-mid']};" if "bg-gradient-mid" in theme else ""}
         --overlay-start: {theme["overlay-start"]};
         --overlay-end: {theme["overlay-end"]};
         --glass-bg: {theme["glass-bg"]};
@@ -88,11 +149,25 @@ def get_css(theme_name):
             radial-gradient(circle at 10% 20%, var(--overlay-start) 0%, transparent 60%),
             radial-gradient(circle at 90% 80%, var(--overlay-end) 0%, transparent 60%),
             radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.8) 0%, transparent 50%),
-            linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+            linear-gradient(135deg, var(--bg-gradient-start) 0%, {f"var(--bg-gradient-mid) 50%," if "bg-gradient-mid" in theme else ""} var(--bg-gradient-end) 100%);
         background-size: 200% 200%;
         background-attachment: scroll;
-        animation: gradientFlow 8s ease infinite alternate;
+        animation: gradientFlow 9s ease infinite alternate;
         min-height: 100vh;
+        position: relative;
+    }}
+    .stApp::before {{
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: radial-gradient(circle at 50% 50%, var(--accent-color) 0%, transparent 70%);
+        opacity: 0.1;
+        z-index: -1;
+        animation: float 20s ease-in-out infinite alternate;
+        pointer-events: none;
     }}
     .stApp::after {{ display: none !important; }}
     html, body {{
@@ -105,6 +180,11 @@ def get_css(theme_name):
     @keyframes gradientFlow {{
         0% {{ background-position: 0% 0%; }}
         100% {{ background-position: 100% 100%; }}
+    }}
+    @keyframes float {{
+        0% {{ transform: translate(-10%, -10%) scale(1); opacity: 0.05; }}
+        50% {{ transform: translate(10%, 10%) scale(1.2); opacity: 0.15; }}
+        100% {{ transform: translate(-5%, 5%) scale(1); opacity: 0.05; }}
     }}
     .block-container {{
         max-width: 1100px !important;

@@ -1,6 +1,6 @@
 {
-    "theme": "Warm Peach",
-    "user_avatar": "🚀",
-    "agent_avatar": "🦉",
-    "llm_model": "deepseek-chat"
+    "theme": "Mint Fresh",
+    "user_avatar": "👤",
+    "agent_avatar": "🐳",
+    "llm_model": "deepseek-reasoner"
 }
